@@ -1,43 +1,68 @@
 import streamlit as st
+import google.generativeai as genai
 
-st.set_page_config(page_title="AI Customer Support Assistant")
+st.set_page_config(
+    page_title="AI Customer Support Assistant",
+    page_icon="🤖",
+    layout="wide"
+)
 
 st.title("🤖 AI Customer Support Assistant")
 
-question = st.text_input("Ask a support question")
+genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 
-if question:
+model = genai.GenerativeModel("gemini-1.5-flash")
 
-    q = question.lower()
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-    if "password" in q:
-        st.success("""
-To reset your password:
+with st.sidebar:
+    st.header("Support Assistant")
+    st.write("AI-powered customer support bot")
 
-1. Click Forgot Password
-2. Enter your registered email
-3. Open the reset link sent to your email
-4. Create a new password
-        """)
+    if st.button("Clear Chat"):
+        st.session_state.messages = []
+        st.rerun()
 
-    elif "login" in q:
-        st.success("""
-Login Troubleshooting:
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.write(message["content"])
 
-1. Check your email and password
-2. Turn off Caps Lock
-3. Clear browser cache
-4. Try logging in again
-        """)
+prompt = st.chat_input("Ask your question")
 
-    elif "account locked" in q:
-        st.success("""
-Your account is temporarily locked.
+if prompt:
 
-Please wait 15 minutes and try again.
-        """)
+    st.session_state.messages.append(
+        {"role": "user", "content": prompt}
+    )
 
-    else:
-        st.warning(
-            "I don't have information about that. Please contact support."
-        )
+    with st.chat_message("user"):
+        st.write(prompt)
+
+    response = model.generate_content(
+        f"""
+        You are a professional customer support assistant.
+
+        User Question:
+        {prompt}
+
+        Answer professionally and clearly.
+        """
+    )
+
+    answer = response.text
+
+    with st.chat_message("assistant"):
+        st.write(answer)
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.button("👍 Helpful")
+
+        with col2:
+            st.button("👎 Not Helpful")
+
+    st.session_state.messages.append(
+        {"role": "assistant", "content": answer}
+    )
